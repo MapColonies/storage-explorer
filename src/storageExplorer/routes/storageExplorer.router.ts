@@ -6,8 +6,9 @@ const storageExplorerRouterFactory: FactoryFunction<Router> = (dependencyContain
   const router = Router();
   const controller = dependencyContainer.resolve(StorageExplorerController);
 
-  router.get('/getFile', controller.getFile);
-  router.get('/getFolder', controller.getFolder);
+  router.get('/', controller.getFolder);
+  router.get('/file', controller.getFile);
+  console.log('ROUTER CONFIG')
 
   return router;
 };
