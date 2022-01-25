@@ -2,7 +2,7 @@ import path from 'path';
 import { Logger } from '@map-colonies/js-logger';
 import { Meter } from '@map-colonies/telemetry';
 import { BoundCounter } from '@opentelemetry/api-metrics';
-import { RequestHandler } from 'express';
+import { RequestHandler, Request } from 'express';
 import httpStatus from 'http-status-codes';
 import { injectable, inject } from 'tsyringe';
 import { IConfig } from 'config';
@@ -10,19 +10,20 @@ import { SERVICES } from '../../common/constants';
 import IFile from '../models/file.model';
 import IFileMap from '../models/fileMap.model';
 import { StorageExplorerManager } from '../models/storageExplorerManager';
-import { DirOperations, filesArrayToMapObject } from '../../common/utilities'
-
+import { decryptPath, DirOperations, encryptPath, filesArrayToMapObject } from '../../common/utilities';
 
 // --  Both request should get path string, defaulted by mountDir --
 
-// Should return a single File (?)
-type GetFileHandler = RequestHandler<undefined, IFile, string>;
+// Should return file content by its id
+type GetFileContentByIdHandler = RequestHandler<undefined, any, string, { id: string }>;
+
+// Should return file content by its id
+type GetFileHandler = RequestHandler<undefined, any, string, { path: string }>;
+
 
 // Should return FileMap ( directory content )
-type GetFolderHandler = RequestHandler<undefined, IFileMap<IFile> | Error, string>;
+type GetFolderHandler = RequestHandler<undefined, IFileMap<IFile> | {error: string}, string>;
 
-// For metadata.json files.
-type GetFileContent = RequestHandler<undefined, JSON, string>;
 
 @injectable()
 export class StorageExplorerController {
@@ -34,12 +35,38 @@ export class StorageExplorerController {
     private readonly dirOperations: DirOperations
   ) {}
 
-  public getFile: GetFileHandler = (req, res) => {
-    // Get file logic
+
+  public getFile: GetFileHandler = async (req, res) => {
+    try {
+      if(typeof req.query === 'undefined' || !('path' in req.query)) {
+        throw new Error('path query is mandatory!');
+      }
+
+      const path: string = req.query.path;
+      const fileContentBuffer = await this.dirOperations.getFileContent(path);
+
+      res.send(JSON.parse(fileContentBuffer.toString('utf-8')))
+
+    } catch (e) {
+      res.status(httpStatus.INTERNAL_SERVER_ERROR).send({error: (e as Error).message});
+    }
   };
 
-  public getFileContent: GetFileContent = (req, res) => {
-    // Get file content logic
+  public getFileContentById: GetFileContentByIdHandler = async (req, res) => {
+    try {
+      if(typeof req.query === 'undefined' || !('id' in req.query)) {
+        throw new Error('id query is mandatory!');
+      }
+
+      const fileId: string = req.query.id;
+      const pathDecrypted = decryptPath(fileId);
+      const fileContentBuffer = await this.dirOperations.getFileContent(pathDecrypted);
+
+      res.send(JSON.parse(fileContentBuffer.toString('utf-8')))
+
+    } catch (e) {
+      res.status(httpStatus.INTERNAL_SERVER_ERROR).send({error: (e as Error).message});
+    }
   };
 
   public getFolder: GetFolderHandler = async (req, res) => {
@@ -47,13 +74,12 @@ export class StorageExplorerController {
     const folderPath = path.join(mountDir, '3D_data','1b');
 
     try {
-      const folderContent = await this.dirOperations.getDirectoryContent(folderPath);
-      
-      const dirContentArray: IFile[] = folderContent.map(entry=>{
-        const filePathBufferHex = Buffer.from(path.resolve(mountDir, entry.name),'utf-8').toString('hex');
+        const folderContent = await this.dirOperations.getDirectoryContent(folderPath);
+       
+        const dirContentArray: IFile[] = folderContent.map(entry => {
+        const filePathEncrypted = encryptPath(path.resolve(folderPath, entry.name));
+        const fileFromEntry: IFile = {id: filePathEncrypted, name: entry.name, isDir: entry.isDirectory()};
 
-        const fileFromEntry: IFile = {id: filePathBufferHex,name:entry.name, isDir: entry.isDirectory()};
-        
         return fileFromEntry;
       })
 
@@ -62,7 +88,7 @@ export class StorageExplorerController {
 
       res.send(dirContentMap);
     } catch (e) {
-      res.status(httpStatus.BAD_REQUEST).send(new Error(e as string));
+      res.status(httpStatus.INTERNAL_SERVER_ERROR).send({error: (e as Error).message});
     }
   };
 }

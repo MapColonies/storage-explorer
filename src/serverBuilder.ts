@@ -9,9 +9,7 @@ import { Logger } from '@map-colonies/js-logger';
 import httpLogger from '@map-colonies/express-access-log-middleware';
 import { SERVICES } from './common/constants';
 import { IConfig } from './common/interfaces';
-import { storageExplorerRouterFactory } from './storageExplorer/routes/storageExplorer.router';
-// import { STORAGE_EXPLORER_ROUTER_SYMBOL } from './storageExplorer/routes/storageExplorer.router';
-
+import { STORAGE_EXPLORER_ROUTER_SYMBOL } from './storageExplorer/routes/storageExplorer.router';
 
 @injectable()
 export class ServerBuilder {
@@ -20,7 +18,7 @@ export class ServerBuilder {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    // @inject(STORAGE_EXPLORER_ROUTER_SYMBOL) private readonly storageExplorerRouter: Router,
+    @inject(STORAGE_EXPLORER_ROUTER_SYMBOL) private readonly storageExplorerRouter: Router,
   ) {
     this.serverInstance = express();
   }
@@ -40,7 +38,7 @@ export class ServerBuilder {
   }
 
   private buildRoutes(): void {
-    this.serverInstance.use('/explorer', storageExplorerRouterFactory(container));
+    this.serverInstance.use('/explorer', this.storageExplorerRouter);
     this.buildDocsRoutes();
   }
 
@@ -51,11 +49,13 @@ export class ServerBuilder {
       this.serverInstance.use(compression(this.config.get<compression.CompressionFilter>('server.response.compression.options')));
     }
 
-    this.serverInstance.use(bodyParser.json(this.config.get<bodyParser.Options>('server.request.payload')));
+    this.serverInstance.use(bodyParser(this.config.get<bodyParser.Options>('server.request.payload')));
 
-    const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}/.*`, 'i');
-    const apiSpecPath = this.config.get<string>('openapiConfig.filePath');
-    this.serverInstance.use(OpenApiMiddleware({ apiSpec: apiSpecPath, validateRequests: true, ignorePaths: ignorePathRegex }));
+     const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}/.*`, 'i');
+     const apiSpecPath = this.config.get<string>('openapiConfig.filePath');
+
+     // Causes routes to not be found...
+    //  this.serverInstance.use(OpenApiMiddleware({ apiSpec: apiSpecPath }));
   }
 
   private registerPostRoutesMiddleware(): void {

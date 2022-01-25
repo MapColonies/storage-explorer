@@ -25,5 +25,15 @@
         "options": null
       }
     }
+  },
+  "pathEncryption":{
+    "keySize": 24,
+    "ivSize": 16,
+    "encryptionPass": "PATH_PASS",
+    "salt":"PATH_SALT",
+    "iv": "PATH_IV",
+    "algorithm": "aes-192-cbc",
+    "outputType": "base64"
+
   }
 }
