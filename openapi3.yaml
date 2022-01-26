@@ -1,87 +1,124 @@
 openapi: 3.0.1
 info:
-  title: service-name
-  description: basic template for map colonies service
+  title: storage-explorer
+  description: Service to reflect folders stractures on server. 
   version: 1.0.0
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
 
 paths:
-  /anotherResource:
+  /explorer/directory:
     get:
-      operationId: getAnotherResource
-      tags:
-        - anotherResource
-      summary: gets the resource
+      summary: Gets directory content
+      parameters:
+        - in: query
+          name: pathSuffix
+          schema:
+            type: string
+          description: Requested directory path suffix.
+          allowReserved: true 
+          required: true
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/anotherResource'
-  /resourceName:
+                $ref: '#/components/schemas/res'
+        500:
+          description: INTERNAL SERVER ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+                
+  /explorer/file:
     get:
-      operationId: getResourceName
-      tags:
-        - resourceName
-      summary: gets the resource
+      summary: Gets file content
+      parameters:
+        - in: query
+          name: pathSuffix
+          schema:
+            type: string
+          description: Requested file path suffix.
+          allowReserved: true 
+          required: true
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/resource'
-    post:
-      operationId: createResource
-      tags:
-        - resourceName
-      summary: creates a new record of type resource
-      responses:
-        201:
-          description: created
+                $ref: '#/components/schemas/res'
+        500:
+          description: INTERNAL SERVER ERROR
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/resource'
-        400:
-          description: Bad Request
+                $ref: '#/components/schemas/error'
+                
+  /explorer/filebyid:
+    get:
+      summary: Gets file content by encrypted id
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Requested file id.
+          allowReserved: true 
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/res'
+        500:
+          description: INTERNAL SERVER ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+                
+  /explorer/decryptid:
+    get:
+      summary: Get decrypted id
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: id to decrypt.
+          allowReserved: true 
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/res'
+        500:
+          description: INTERNAL SERVER ERROR
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
 components:
   schemas:
+    res:
+      type: object
+      properties:
+        data:
+          type: object
     error:
       type: object
-      required:
-        - message
       properties:
-        message:
+        error: 
           type: string
-    resource:
-      type: object
-      required:
-        - id
-        - name
-        - description
-      properties:
-        id:
-          type: number
-          format: int64
-        name:
-          type: string
-        description:
-          type: string
-    anotherResource:
-      type: object
-      required:
-        - kind
-        - isAlive
-      properties:
-        kind:
-          type: string
-        isAlive:
-          type: boolean
+      
+            
+    

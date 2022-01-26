@@ -5,8 +5,6 @@ import IFile from './file.model';
 import IFileMap from './fileMap.model';
 
 
-// Here maybe we should hash incoming route string to unique value for the exported fileMap?
-
 
 @injectable()
 export class StorageExplorerManager {
