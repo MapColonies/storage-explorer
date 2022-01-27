@@ -8,7 +8,7 @@ const storageExplorerRouterFactory: FactoryFunction<Router> = (dependencyContain
 
   router.get('/directory', controller.getDirectory);
   router.get('/file', controller.getFile);
-  router.get('/filebyid', controller.getFileContentById);
+  router.get('/filebyid', controller.getFileById);
   router.get('/decryptid', controller.decryptId);
 
   return router;
