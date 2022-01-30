@@ -3,6 +3,7 @@
 export default interface IFile {
     id: string; // (Required) String that uniquely identifies the file
     name: string; // (Required) Full name, e.g. `MyImage.jpg`
+    parentId: string; // Parent dir id.
     ext?: string; // File extension, e.g. `.jpg`
     isDir?: boolean; // Is a directory, default: false
     isHidden?: boolean; // Is a hidden file, default: false

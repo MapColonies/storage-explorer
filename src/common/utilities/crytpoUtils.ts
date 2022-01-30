@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import config from 'config';
+import { InternalServerError } from '../exceptions/http/internalServerError';
 
 interface PathEncryptionOptions {
   keySize: number;
@@ -27,20 +28,25 @@ function urlDecodeBase64(encodedBase64Input: string): string {
 }
 
 export const encryptPath = (path: string): string => {
-  const key = crypto.scryptSync(encryptionPass, salt, keySize);
-
-  const cipher = crypto.createCipheriv(algorithm, key, pathIv);
-  const encryptedPath = Buffer.concat([cipher.update(path), cipher.final()]).toString(outputType);
-
-  return urlEncodeBase64(encryptedPath);
+  try {
+    const key = crypto.scryptSync(encryptionPass, salt, keySize);
+    const cipher = crypto.createCipheriv(algorithm, key, pathIv);
+    const encryptedPath = Buffer.concat([cipher.update(path), cipher.final()]).toString(outputType);
+  
+    return urlEncodeBase64(encryptedPath);
+  } catch (e) {
+    throw new InternalServerError("Couldn't create encryption for this path");
+  }
 };
 
 export const decryptPath = (encryptedPath: string): string => {
-  const key = crypto.scryptSync(encryptionPass, salt, keySize);
+  try {
+    const key = crypto.scryptSync(encryptionPass, salt, keySize);
+    const decipher = crypto.createDecipheriv(algorithm, key, pathIv);
+    const decrypedPath = Buffer.concat([decipher.update(urlDecodeBase64(encryptedPath), outputType), decipher.final()]).toString();
 
-  const decipher = crypto.createDecipheriv(algorithm, key, pathIv);
-
-  const decrypedPath = Buffer.concat([decipher.update(urlDecodeBase64(encryptedPath), outputType), decipher.final()]).toString();
-
-  return decrypedPath;
+    return decrypedPath;
+  } catch (e) {
+    throw new InternalServerError("Couldn't decrypt the provided id");
+  }
 };

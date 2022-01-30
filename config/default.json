@@ -1,4 +1,18 @@
 {
+  "mountDirs": [
+    {
+      "physical": "../MOCKS",
+      "displayName": "//First_mount_dir"
+    },
+    {
+      "physical": "../MOCKS_2",
+      "displayName": "//Second_mount_dir"
+    },
+    {
+      "physical": "../MOCKS_3",
+      "displayName": "Third_mount_dir"
+    }
+  ],
   "mountDir": "../MOCKS",
   "openapiConfig": {
     "filePath": "./openapi3.yaml",

@@ -7,7 +7,6 @@ import { IConfig } from 'config';
 import { SERVICES } from '../../common/constants';
 import IFile from '../models/file.model';
 import IFileMap from '../models/fileMap.model';
-import { StorageExplorerManager } from '../models/storageExplorerManager';
 import { decryptPath, DirOperations, encryptPath, filesArrayToMapObject } from '../../common/utilities';
 import { IStream } from '../../common/interfaces';
 import { InternalServerError } from '../../common/exceptions/http/internalServerError';
@@ -28,7 +27,6 @@ type DecryptIdHandler = RequestHandler<undefined, {data: string} | { error: stri
 export class StorageExplorerController {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(StorageExplorerManager) private readonly manager: StorageExplorerManager,
     @inject(SERVICES.METER) private readonly meter: Meter,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     private readonly dirOperations: DirOperations
@@ -36,9 +34,8 @@ export class StorageExplorerController {
 
   public getFile: GetFileHandler = (req, res, next) => {
     try {
-      const mountDir = this.config.get<string>('mountDir');
-      const pathSuffix: string = req.query.pathSuffix;
-      const filePath = path.join(mountDir, pathSuffix);
+      const pathSuffix: string = this.dirOperations.getPhysicalPath(req.query.pathSuffix);;
+      const filePath = pathSuffix;
       this.sendStream(res, "getFile", filePath)
     } catch (e) {
       next(e)
@@ -69,21 +66,37 @@ export class StorageExplorerController {
 
   public getDirectory: GetDirectoryHandler = async (req, res, next) => {
     try {
-        const mountDir = this.config.get<string>('mountDir');
-        const pathSuffix: string = req.query.pathSuffix;
-        const directoryPath = path.join(mountDir, pathSuffix);
-        const directoryContent = await this.dirOperations.getDirectoryContent(directoryPath);
+        let pathSuffix: string = req.query.pathSuffix;
+        let directoryContent;
 
+        if (pathSuffix === '/') {
+          directoryContent = this.dirOperations.generateRootDir();
+          res.send({ data: directoryContent });
+          return;
+        }
+        
+        pathSuffix = this.dirOperations.getPhysicalPath(pathSuffix);
+ 
+
+        directoryContent = await this.dirOperations.getDirectoryContent(pathSuffix);
         const dirContentArray: IFile[] = directoryContent.map((entry) => {
-          const filePathEncrypted = encryptPath(path.join(directoryPath, entry.name));
-          const fileFromEntry: IFile = { id: filePathEncrypted, name: entry.name, isDir: entry.isDirectory() };
+          const filePathEncrypted = encryptPath(path.join(pathSuffix, entry.name));
+          const parentPathEncrypted = encryptPath(pathSuffix);
+
+          const fileFromEntry: IFile = {
+            id: filePathEncrypted,
+            name: entry.name,
+            isDir: entry.isDirectory(),
+            parentId: parentPathEncrypted,
+          };
 
           return fileFromEntry;
         });
 
-      const dirContentMap = filesArrayToMapObject(dirContentArray);
+        const dirContentMap = filesArrayToMapObject(dirContentArray);
+        res.send({ data: dirContentMap });
+        
 
-      res.send({data: dirContentMap});
     } catch (e) {
       next(e)
     }

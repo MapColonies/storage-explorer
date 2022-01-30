@@ -18,3 +18,8 @@ export interface IStream {
   size: number;
   name: string;
 }
+
+export interface ImountDirObj {
+  physical: string;
+  displayName: string;
+}
