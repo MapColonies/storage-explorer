@@ -8,6 +8,10 @@ export class StorageExplorerRequestSender {
     return supertest.agent(this.app).get(`/explorer/directory?pathSuffix=${pathSuffix}`).set('Content-Type', 'application/json');
   }
 
+  public async getDirectoryById(id: string): Promise<supertest.Response> {
+    return supertest.agent(this.app).get(`/explorer/directorybyid?id=${id}`).set('Content-Type', 'application/json');
+  }
+
   public async getDirectoryWithoutQuery(): Promise<supertest.Response> {
     return supertest.agent(this.app).get(`/explorer/directory`).set('Content-Type', 'application/json');
   }
