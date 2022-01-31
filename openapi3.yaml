@@ -32,6 +32,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/error'
+
+  /explorer/directorybyid:
+    get:
+      summary: Gets directory content by id.
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Requested directory id.
+          allowReserved: true 
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/res'
+        500:
+          description: INTERNAL SERVER ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
                 
   /explorer/file:
     get:

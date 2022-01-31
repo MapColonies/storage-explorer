@@ -18,26 +18,37 @@ class DirOperations {
   private readonly fileTypeNotSupported = 'File type is not supported';
   private readonly couldNotCreateStream = 'Error creating a stream for the requested file';
   private readonly pathIsNotDir = 'Path is not a directory';
+  private readonly invalidPath = 'Invalid path'
 
   public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger,
                      @inject(SERVICES.CONFIG) private readonly config: IConfig){}
 
   // get physical name or regular name
   public getPhysicalPath(path: string): string {
-    
-    const mountDirectories = this.config.get<ImountDirObj[]>('mountDirs');
-    const selectedDir = mountDirectories.find((mountDir) => path.startsWith(`/${mountDir.displayName}`));
-    
+    this.logger.info(`[DirOperations][getPhysicalPath] get physical path for ${path}`)
+    const safePath = Path.normalize(path);
+    if(safePath.startsWith('.')) {
+      throw new BadRequestError(this.invalidPath);
+    }
+
+    const mountDirectories = this.config.get<ImountDirObj[]>('mountDirs').map((mountDir) => {
+      return {...mountDir, displayName: `${mountDir.displayName}`.replace(/\\/g,'\\\\')}
+    });
+
+    const selectedDir = mountDirectories.find((mountDir) => {
+      return safePath.startsWith(`/${mountDir.displayName}`)
+    });
+
     if(selectedDir){
-      const physicalPath = path.replace(`/${selectedDir.displayName}`, selectedDir.physical);
+      const physicalPath = safePath.replace(`/${selectedDir.displayName}`, selectedDir.physical);
       return physicalPath;
     }
 
-    return path;
+    return safePath;
   }
   
   public generateRootDir(): IFileMap<IFile> {
-    this.logger.info("[DirOperations][generateRootDir] generating mounts root dir.")
+    this.logger.info("[DirOperations][generateRootDir] generating mounts root dir")
     const mountDirectories = this.config.get<ImountDirObj[]>('mountDirs');
 
     const mountFilesArr = mountDirectories.map((mountDir)=> {
@@ -83,7 +94,7 @@ class DirOperations {
     const isJson = Path.extname(path as string) === '.json';
 
     if(!isJson){
-        throw new BadRequestError(this.fileTypeNotSupported);;
+      throw new BadRequestError(this.fileTypeNotSupported);
     }
 
     try {
