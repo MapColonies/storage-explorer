@@ -1,14 +1,18 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import httpStatusCodes from 'http-status-codes';
+import config from 'config';
 import { getApp } from '../../../src/app';
 import { SERVICES } from '../../../src/common/constants';
-import { encryptPath } from '../../../src/common/utilities';
+import { DirOperations, encryptPath } from '../../../src/common/utilities';
 import { StorageExplorerRequestSender } from './helpers/requestSender';
+import { innerDirSnap, rootDirSnap } from './snapshots/directory';
+import { fileData } from './snapshots/file';
+import { decryptedIdRes } from './snapshots/decryptId';
 
 describe('Storage Explorer', function () {
   let requestSender: StorageExplorerRequestSender;
+  let dirOperaions: DirOperations;
   beforeEach(function () {
     const app = getApp({
       override: [
@@ -18,50 +22,11 @@ describe('Storage Explorer', function () {
       useChild: true,
     });
     requestSender = new StorageExplorerRequestSender(app);
+    dirOperaions = new DirOperations(jsLogger({ enabled: false }), config);
   });
 
-  describe('given valid params - all should return 200', () => {
+  describe('given valid params', () => {
     describe('directory', () => {
-      const rootDirSnap = {
-        data: {
-          '7JtPOli87ygL..X4xb_1Nw--': {
-            id: '7JtPOli87ygL..X4xb_1Nw--',
-            name: '\\First_mount_dir',
-            isDir: true,
-            parentId: '4dt.yTVSoCcyvIqAxvCeeA--',
-          },
-          'Zjio5CfUrRlIIBpFrNptSg--': {
-            id: 'Zjio5CfUrRlIIBpFrNptSg--',
-            name: '\\Second_mount_dir',
-            isDir: true,
-            parentId: '4dt.yTVSoCcyvIqAxvCeeA--',
-          },
-          'a4L_eZaHNVHkqOG25hUhPA--': {
-            id: 'a4L_eZaHNVHkqOG25hUhPA--',
-            name: '\\Third_mount_dir',
-            isDir: true,
-            parentId: '4dt.yTVSoCcyvIqAxvCeeA--',
-          },
-        },
-      };
-
-      const innerDirSnap = {
-        data: {
-          'iYl0xZ28wqXUIZ_pP_XU0nYcG7GwEYfCS34Kba_IvqU-': {
-            id: 'iYl0xZ28wqXUIZ_pP_XU0nYcG7GwEYfCS34Kba_IvqU-',
-            name: '3D_data',
-            isDir: true,
-            parentId: 'RZplF5EqbvYd2.bmgZ8vPg--',
-          },
-          'TBIdryReKvf_ULD5KQuYibFB6u92ch2su_vU02NDgRU-': {
-            id: 'TBIdryReKvf_ULD5KQuYibFB6u92ch2su_vU02NDgRU-',
-            name: 'raster_data',
-            isDir: true,
-            parentId: 'RZplF5EqbvYd2.bmgZ8vPg--',
-          },
-        },
-      };
-
       it('should return root dir and match snapshot from mock', async () => {
         const res = await requestSender.getDirectory('/');
         expect(res.type).toBe('application/json');
@@ -69,15 +34,19 @@ describe('Storage Explorer', function () {
         expect(res.body).toMatchObject(rootDirSnap);
       });
 
-      // TODO: Make it work.
+      it('should return root dir when requested root traversal', async () => {
+        const res = await requestSender.getDirectory('/../../../');
+        expect(res.type).toBe('application/json');
+        expect(res.status).toBe(httpStatusCodes.OK);
+        expect(res.body).toMatchObject(rootDirSnap);
+      });
 
-      // it('should return data of inner directories', async () => {
-      //   const res = await requestSender.getDirectory('/\\first_mount_dir');
-      //   expect(res.type).toBe('application/json');
-      //   expect(res.status).toBe(httpStatusCodes.OK);
-      //   expect(res.body).toMatchObject(innerDirSnap);
-      //   // console.log(res.body)
-      // });
+      it('should return data of inner directories', async () => {
+        const res = await requestSender.getDirectory('/\\\\First_mount_dir');
+        expect(res.type).toBe('application/json');
+        expect(res.status).toBe(httpStatusCodes.OK);
+        expect(res.body).toMatchObject(innerDirSnap);
+      });
 
       it('should return root dir by id and match snapshot from mock', async () => {
         const res = await requestSender.getDirectoryById('4dt.yTVSoCcyvIqAxvCeeA--');
@@ -85,19 +54,54 @@ describe('Storage Explorer', function () {
         expect(res.status).toBe(httpStatusCodes.OK);
         expect(res.body).toMatchObject(rootDirSnap);
       });
+
+      it('should return data of inner directories by id', async () => {
+        const res = await requestSender.getDirectoryById('7JtPOli87ygL..X4xb_1Nw--');
+        expect(res.type).toBe('application/json');
+        expect(res.status).toBe(httpStatusCodes.OK);
+        expect(res.body).toMatchObject(innerDirSnap);
+      });
+    });
+
+    describe('file', () => {
+      it('should return file content and match snapshot from mock', async () => {
+        const res = await requestSender.getFile('/\\\\First_mount_dir/3D_data/1b/product.json');
+        expect(res.type).toBe('application/json');
+        expect(res.status).toBe(httpStatusCodes.OK);
+        expect(res.body).toMatchObject(fileData);
+      });
+
+      it('should return file content by id and match snapshot from mock', async () => {
+        const physicalPath = dirOperaions.getPhysicalPath('/\\\\First_mount_dir/3D_data/1b/product.json');
+        const encryptedNotJsonPath = encryptPath(physicalPath);
+        const res = await requestSender.getFileById(encryptedNotJsonPath);
+        expect(res.type).toBe('application/json');
+        expect(res.status).toBe(httpStatusCodes.OK);
+        expect(res.body).toMatchObject(fileData);
+      });
+    });
+
+    describe('decryptId', () => {
+      it('should return the correct decrypted path', async () => {
+        const directoryId = 'IrGIWn9rTrD77HKJZ.u59qkBpzrcByXx7URL.z0PoD0-';
+        const res = await requestSender.getDecryptedId(directoryId)
+        expect(res.type).toBe('application/json');
+        expect(res.status).toBe(httpStatusCodes.OK);
+        expect(res.body).toMatchObject(decryptedIdRes);
+      });
     });
   });
 
-  // TODO: Fix tests to work with // 
+
   describe('given invalid params', () => {
     describe('directory', () => {
       it('should return 400 if path not found', async () => {
-        const { status } = await requestSender.getDirectory('3D_data/2b/3b');
+        const { status } = await requestSender.getDirectory('/\\\\First_mount_dir/3D_data/1b/3b');
         expect(status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
       it('should return 400 if a file path supplied', async () => {
-        const { status } = await requestSender.getDirectory('/\\First_mount_dir/3D_data/1b/metadata.json');
+        const { status } = await requestSender.getDirectory('/\\\\First_mount_dir/3D_data/1b/metadata.json');
         expect(status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
@@ -105,16 +109,21 @@ describe('Storage Explorer', function () {
         const { status } = await requestSender.getDirectoryWithoutQuery();
         expect(status).toBe(httpStatusCodes.BAD_REQUEST);
       });
+
+      it('should return 400 for invalid path (Directories traversal)', async () => {
+        const { status } = await requestSender.getDirectory('../../../');
+        expect(status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
     });
 
     describe('file', () => {
       it('should return 400 if path not found', async () => {
-        const { status } = await requestSender.getFile('3D_data/2b/not_there.json');
+        const { status } = await requestSender.getFile('/\\\\First_mount_dir/3D_data/1b/not_there.json');
         expect(status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
       it('should return 400 if file is not a JSON', async () => {
-        const { status } = await requestSender.getFile('3D_data/1b/text.txt');
+        const { status } = await requestSender.getFile('/\\\\First_mount_dir/3D_data/1b/text.txt');
         expect(status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
@@ -131,7 +140,8 @@ describe('Storage Explorer', function () {
       });
 
       it('should return 400 if file is not a JSON', async () => {
-        const encryptedNotJsonPath = encryptPath('MOCKS/3D_data/1b/text.txt');
+        const physicalPath = dirOperaions.getPhysicalPath('/\\\\First_mount_dir/3D_data/1b/text.txt');
+        const encryptedNotJsonPath = encryptPath(physicalPath);
         const { status } = await requestSender.getFileById(encryptedNotJsonPath);
         expect(status).toBe(httpStatusCodes.BAD_REQUEST);
       });
@@ -142,7 +152,7 @@ describe('Storage Explorer', function () {
       });
     });
 
-    describe('decrypt id', () => {
+    describe('decryptId', () => {
       it('should return 500 if id is not valid', async () => {
         const { status } = await requestSender.getDecryptedId('iYl0xZ28wqXUIZ_pP_XU0v0i0EhFUpjD1QzJQsD7hO9.dPkcbmbb4pbPjUyek6');
         expect(status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);

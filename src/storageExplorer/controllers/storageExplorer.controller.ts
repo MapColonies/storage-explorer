@@ -4,12 +4,12 @@ import { Meter } from '@map-colonies/telemetry';
 import { RequestHandler, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { IConfig } from 'config';
+import { InternalServerError } from '@map-colonies/error-types';
 import { SERVICES } from '../../common/constants';
 import IFile from '../models/file.model';
 import IFileMap from '../models/fileMap.model';
 import { decryptPath, DirOperations, encryptPath, filesArrayToMapObject } from '../../common/utilities';
 import { IStream } from '../../common/interfaces';
-import { InternalServerError } from '../../common/exceptions/http/internalServerError';
 
 // Should return file content by its id
 type GetFileByIdHandler = RequestHandler<undefined, undefined, undefined, { id: string }>;

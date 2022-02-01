@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import config from 'config';
-import { InternalServerError } from '../exceptions/http/internalServerError';
+import { InternalServerError } from '@map-colonies/error-types';
 
 interface PathEncryptionOptions {
   keySize: number;
@@ -17,7 +17,7 @@ const { keySize, ivSize, encryptionPass, iv, algorithm, salt, outputType } = con
 const pathIv = Buffer.alloc(ivSize, iv);
 
 // When sending base64 encoding via query params it omits some special characters.
-// We use these functions to encode and decode the cipher to and from url friendly, into a valid token.
+// We use these functions to encode and decode the cipher to and from url safe, into a valid token.
 
 function urlEncodeBase64(base64Input: string): string {
   return base64Input.replace(/\+/g, '.').replace(/\//g, '_').replace(/=/g, '-');

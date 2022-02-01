@@ -1,12 +1,10 @@
-import { promises as fsPromises, Dirent,PathLike, createReadStream, statSync, existsSync } from 'fs';
+import { promises as fsPromises, Dirent, PathLike, createReadStream, statSync, existsSync } from 'fs';
 import { default as Path } from 'path'
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable, singleton } from "tsyringe";
+import { BadRequestError, NotFoundError, InternalServerError } from '@map-colonies/error-types';
 import { SERVICES } from '../constants';
-import { BadRequestError } from '../exceptions/http/badRequestError';
-import { NotFoundError } from '../exceptions/http/notFoundError';
 import { IConfig, ImountDirObj, IStream } from '../interfaces';
-import { InternalServerError } from '../exceptions/http/internalServerError';
 import IFileMap from '../../storageExplorer/models/fileMap.model';
 import IFile from '../../storageExplorer/models/file.model';
 import { encryptPath, filesArrayToMapObject } from '.';
@@ -25,7 +23,7 @@ class DirOperations {
 
   // get physical name or regular name
   public getPhysicalPath(path: string): string {
-    this.logger.info(`[DirOperations][getPhysicalPath] get physical path for ${path}`)
+    this.logger.info(`[DirOperations][getPhysicalPath] getting physical path for ${path}`)
     const safePath = Path.normalize(path);
     if(safePath.startsWith('.')) {
       throw new BadRequestError(this.invalidPath);
