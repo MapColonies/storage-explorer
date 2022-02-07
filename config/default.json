@@ -1,4 +1,18 @@
 {
+  "mountDirs": [
+    {
+      "physical": "../MOCKS",
+      "displayName": "\\First_mount_dir"
+    },
+    {
+      "physical": "../MOCKS_2",
+      "displayName": "\\Second_mount_dir"
+    },
+    {
+      "physical": "../MOCKS_3",
+      "displayName": "\\Third_mount_dir"
+    }
+  ],
   "openapiConfig": {
     "filePath": "./openapi3.yaml",
     "basePath": "/docs",
@@ -12,7 +26,7 @@
     }
   },
   "server": {
-    "port": "8080",
+    "port": "3000",
     "request": {
       "payload": {
         "limit": "1mb"
@@ -24,5 +38,15 @@
         "options": null
       }
     }
+  },
+  "pathEncryption":{
+    "keySize": 24,
+    "ivSize": 16,
+    "encryptionPass": "PATH_PASS",
+    "salt":"PATH_SALT",
+    "iv": "PATH_IV",
+    "algorithm": "aes-192-cbc",
+    "outputType": "base64"
+
   }
 }
